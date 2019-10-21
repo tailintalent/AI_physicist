@@ -26,7 +26,7 @@ python run_exp/run_theory.py JOB_ID
 ```
 where the ``JOB_ID'' is a number (between 0 to TOTAL # of hyperparameter combinations - 1) will map to a specific hyperparameter combination.
 
-[theory_learning/theory_hub.ipynb](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_hub.ipynb) in addition contains the unification algorithm.
+[theory_learning/theory_unification.ipynb](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_unification.ipynb) in addition contains the unification algorithm.
 
 ## New features added to the AI Physicist:
 Features are continuously added to the AI physicist. These features may or may not work, and can be turned on and off in the hyperparameter settings in theory_learning/theory_exp.ipynb or in run_exp/run_theory.py. Some features added compared to the original paper (Wu and Tegmark, 2019) are:
