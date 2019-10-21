@@ -50,7 +50,10 @@ is_network_unification = True
 # In[3]:
 
 
-"""Load the theory hub. Should point to the directory that the theory hub lives."""
+"""Load the theory hub. Should point to the directory that the theory_hub lives.
+An example theory hub can be downloaded at https://drive.google.com/file/d/1I0P0MUjP9b_HGMacNZ0avO_0CtTtG_y0/view?usp=sharing,
+after downloading, put it under the directory dirname.
+"""
 exp_id = "test"
 date_time = "10-15"
 dirname = theory_PATH + "/{0}_{1}/".format(exp_id, date_time)
