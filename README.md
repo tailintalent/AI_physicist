@@ -14,9 +14,9 @@ First clone the directory. Since the model construction and training of this rep
 git submodule init; git submodule update
 ```
 
-The PyTorch requirement is >=0.4.1. PyTorch >=1.2 will work, but will have depreciated warnings of using uint8 for masked_select.
+The PyTorch requirement is >=0.4.1.
 
-The datasets used for the paper is provided in [here](https://space.mit.edu/home/tegmark/aiphysicist.html). Put the unzipped "MYSTERIES", "GROUND_TRUTH" and "filenames.csv" directly under datasets/
+The datasets used for the paper is provided in [here](https://space.mit.edu/home/tegmark/aiphysicist.html). Put the unzipped "MYSTERIES", "GROUND_TRUTH" and "filenames.csv" directly under datasets/.
 
 ## Usage
 The main experiment file is [theory_learning/theory_exp.ipynb](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_exp.ipynb) (or the .py counterpart for terminal), which contains the DDAC, simplification and lifelong learning algorithms for the AI Physicist.
