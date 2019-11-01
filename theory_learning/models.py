@@ -10,7 +10,7 @@ import torch.nn as nn
 import sys, os
 sys.path.append(os.path.join(os.path.dirname("__file__"), '..', '..'))
 from AI_physicist.pytorch_net.net import MLP
-from AI_physicist.pytorch_net.util import get_criterion, MAELoss, to_np_array, to_Variable
+from AI_physicist.pytorch_net.util import get_criterion, MAELoss, to_np_array, to_Variable, Loss_Fun
 from AI_physicist.settings.global_param import PrecisionFloorLoss, Dt
 from AI_physicist.theory_learning.util_theory import logplus
 
