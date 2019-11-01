@@ -176,7 +176,7 @@ def get_Lagrangian_loss_indi(model, X, dt = Dt, force_kinetic_term = False, norm
 
 def get_Lagrangian_loss(model, X, dt = Dt, force_kinetic_term = True):
     """Obtain individual loss for Euler-Lagrangian Equation for either individual model or a model ensemble"""
-    if model.__class__.__name__ != "Net_Ensemble":
+    if model.__class__.__name__ != "Model_Ensemble":
         return get_Lagrangian_loss_indi(model, X, dt = dt, force_kinetic_term = force_kinetic_term)
     eq_list = []
     for i in range(model.num_models):

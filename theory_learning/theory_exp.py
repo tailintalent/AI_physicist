@@ -52,15 +52,15 @@ standardize = standardize_symbolic_expression
 forward_steps = 1            # Number of forward steps to predict
 num_output_dims = 2          # It sets the dimension of output
 num_input_steps = 2          # It sets the number of steps for the input
-exp_mode = "continuous"      # Choose from "continuous", "newb" and "base"
+exp_mode = "continuous"      # Choose from "continuous" (full AI Physicist), "newb" (newborn) and "base" (baseline)
 data_format = "states"       # Choose from "states" or "images"
 num_theories_init = 4        # Number of theories to start with
-pred_nets_activation = "linear" # Choose from "linear", "leakyRelu"
-num_layers = 3
+pred_nets_activation = "linear" # Activation for the prediction function f. Choose from "linear", "leakyRelu"
+num_layers = 3               # Number of layers for the prediction function f.
 # scheduler_settings = ("LambdaLR", "exp", 2, False)    # Settings for the learning rate scheduler
 scheduler_settings = ("ReduceLROnPlateau", 40, 0.1)   # Settings for the learning rate scheduler
 matching_numerical_tolerance = 2e-4 # The tolerance below which you regard the numerical coefficient matches.
-matching_snapped_tolerance = 1e-9 # The tolerance below which you regard the snapped coefficient matches.
+matching_snapped_tolerance = 1e-9   # The tolerance below which you regard the snapped coefficient matches.
 add_theory_loss_threshold = 2e-6
 add_theory_criteria = ("loss_with_domain", 0)
 add_theory_quota = 1
@@ -69,16 +69,16 @@ MDL_mode = "both"
 show_3D_plot = False
 show_vs = False
 
-is_Lagrangian = False
+is_Lagrangian = False       # If True, learn the Lagrangian. If False, learn Equation of Motion (EOM)
 loss_balance_model_influence = False
 loss_success_threshold = 1e-4   # MSE level you regard as success
 theory_add_mse_threshold = 0.05 # MSE level below which you will add to the theory hub
 theory_remove_fraction_threshold = 0.005  # Fraction threshold below which you will remove a theory after each stage of training.
-load_previous = True        # Whether to load previously trained instances on 
-max_trial_times = 1         # Maximum number of trial times before going on to next target (DEFAULT=20)
+load_previous = True        # Whether to load previously trained instances on
+max_trial_times = 1         # Maximum number of trial times before going on to next target (DEFAULT=1)
 is_simplify_model = True    # Whether to perform simplification of theory models
 is_simplify_domain = False  # Whether to perform simplification of theory domains
-record_mode = 2
+record_mode = 2             # Record data mode. Choose from 0 (minimal recording), 1, 2 (record everything)
 
 csv_filename_list = get_mystery(50000, range(4,7), range(1, 6)) + get_mystery(50000, [20], range(1, 6)) + get_mystery(50000, range(7, 11), range(1, 6))
 
@@ -111,7 +111,6 @@ is_mse_decay = False
 num_examples = 20000
 epochs = 10000
 iter_to_saturation = int(epochs / 2)
-num_stages = 1
 date_time = "{0}-{1}".format(datetime.datetime.now().month, datetime.datetime.now().day)
 seed = 0
 array_id = "Lag"
@@ -219,7 +218,6 @@ elif exp_mode == "base":
     add_theory_quota = 0
     is_simplify_model = False
     is_simplify_domain = False
-    num_stages = 1
     loss_core = "mse"
     MDL_mode = "None"
 else:
@@ -227,7 +225,6 @@ else:
 batch_size = min(batch_size, num_examples)
 save_image = True
 is_domain_fit_setting = True
-alternate_training = True
 render = False
 loss_floor = 1e-12
 csv_dirname = "../datasets/"
@@ -349,8 +346,6 @@ def load_info_dict(info_dict, filename, trial_times = 1):
 # In[ ]:
 
 
-env_name_list = csv_filename_list
-
 info_dict = {}
 info_dict["array_id"] = array_id
 info_dict["reg_smooth"] = reg_smooth
@@ -362,7 +357,7 @@ if load_previous:
 ###########################################################################################################################
 # Level I. Iterate over environments:
 ###########################################################################################################################
-for env_name in env_name_list:
+for env_name in csv_filename_list:
     big_domain_ids = big_domain_dict[env_name] if env_name in big_domain_dict else None 
     # Dealing with specific environments:
     if "mystery" in env_name and num_output_dims == 2:
@@ -535,39 +530,79 @@ for env_name in env_name_list:
             reg_multiplier = reg_multiplier,
             is_cuda = is_cuda,
         )
-        early_stopping_env = Early_Stopping(patience = 2, epsilon = 1e-9)
-        to_stop = False
 
         #################################################################################################
         # Level III.a Iterative training of models and domains
-        #       Note: First stage: train model and at the same time train domain (only using IV.a)
-        #             From second stage on: first only train model (IV.a), then only train domain (IV.b)
         #################################################################################################
-        for j in range(num_stages):
-            ###############################################################################
-            # Level IV.a. Train model:
-            ###############################################################################
-            print("\n" + "=" * 80)
-            print("{0}, trial times {1}, training model, stage {2}:".format(env_name, trial_times, j + 1))
-            print("=" * 80 + "\n")
-            loss_precision_floor_init = 10
-            T.set_loss_core(loss_core, loss_precision_floor_init)
-            data_record = T.fit_model(
+        print("\n" + "=" * 80)
+        print("{0}, trial times {1}, training model:".format(env_name, trial_times))
+        print("=" * 80 + "\n")
+        loss_precision_floor_init = 10
+        T.set_loss_core(loss_core, loss_precision_floor_init)
+        data_record = T.fit_model(
+            X_train,
+            y_train,
+            validation_data = (X_test, y_test),
+            optim_type = optim_type,
+            optim_autoencoder_type = optim_autoencoder_type,
+            reg_dict = reg_dict,
+            reg_mode = reg_mode,
+            reg_smooth = reg_smooth,
+            domain_fit_setting = domain_fit_setting,
+            forward_steps = forward_steps,
+            domain_pred_mode = domain_pred_mode,
+            scheduler_settings = scheduler_settings,
+            loss_order_decay = (lambda epoch: - epoch / float(loss_decay_scale)) if loss_decay_scale is not None else None,
+            view_init = view_init,
+            epochs = epochs,
+            patience = int(epochs / 50) if exp_mode != "base" else None,
+            batch_size = batch_size,
+            inspect_interval = int(epochs / 100) if is_pendulum else int(epochs / 10),
+            change_interval = change_interval,
+            record_interval = record_interval,
+            record_mode = record_mode,
+            isplot = isplot,
+            filename = filename[:-2] + "/{0}_training-model".format(env_name) if save_image else None,
+            raise_nan = False,
+            add_theory_quota = add_theory_quota,
+            add_theory_limit = add_theory_limit,
+            add_theory_criteria = add_theory_criteria,
+            add_theory_loss_threshold = add_theory_loss_threshold,
+            loss_floor = loss_floor,
+            true_domain_test = info["true_domain_test"] if "true_domain_test" in info else None,
+            num_output_dims = num_output_dims,
+            prefix = "{0}_train_model:".format(env_name),
+            show_3D_plot = show_3D_plot,
+            show_vs = show_vs,
+            big_domain_ids = big_domain_ids,
+            fix_adaptive_precision_floor = True,
+        )
+        data_record["loss_precision_floor"] = loss_precision_floor_init
+        info_dict_single["data_record"] = deepcopy(data_record)
+        info_dict_single["pred_nets"] = deepcopy(T.pred_nets.model_dict)
+        info_dict_single["removed_theories_0"] = T.remove_theories_based_on_data(X_test, y_test, threshold = theory_remove_fraction_threshold)
+
+        # Perform MDL training after MSE training if stipulated:
+        if MDL_mode == "both":
+            if loss_core == "mse":
+                T.set_loss_core("DLs")
+            if hasattr(T, "optimizer"):
+                delattr(T, "optimizer")
+            data_record_MDL1 = T.fit_model_schedule(
                 X_train,
                 y_train,
                 validation_data = (X_test, y_test),
-                optim_type = optim_type,
-                optim_autoencoder_type = optim_autoencoder_type,
+                optim_type = ("adam", 1e-4),
                 reg_dict = reg_dict,
                 reg_mode = reg_mode,
                 reg_smooth = reg_smooth,
-                domain_fit_setting = None if alternate_training and j > 0 else domain_fit_setting,
+                domain_fit_setting = domain_fit_setting,
                 forward_steps = forward_steps,
                 domain_pred_mode = domain_pred_mode,
                 scheduler_settings = scheduler_settings,
-                loss_order_decay = (lambda epoch: - epoch / float(loss_decay_scale)) if (j == 0 and loss_decay_scale is not None) else None,
+                loss_order_decay = (lambda epoch: - epoch / float(loss_decay_scale)) if loss_decay_scale is not None else None,
                 view_init = view_init,
-                epochs = epochs,
+                epochs = int(epochs / 2),
                 patience = int(epochs / 50) if exp_mode != "base" else None,
                 batch_size = batch_size,
                 inspect_interval = int(epochs / 100) if is_pendulum else int(epochs / 10),
@@ -575,190 +610,74 @@ for env_name in env_name_list:
                 record_interval = record_interval,
                 record_mode = record_mode,
                 isplot = isplot,
-                filename = filename[:-2] + "/{0}_training-model_stage_{1}".format(env_name, j) if save_image else None,
+                filename = filename[:-2] + "/{0}_training-modelDL1".format(env_name) if save_image else None,
                 raise_nan = False,
                 add_theory_quota = add_theory_quota,
                 add_theory_limit = add_theory_limit,
                 add_theory_criteria = add_theory_criteria,
                 add_theory_loss_threshold = add_theory_loss_threshold,
+                theory_remove_fraction_threshold = theory_remove_fraction_threshold,
                 loss_floor = loss_floor,
-                true_domain_test = info["true_domain_test"] if "true_domain_test" in info else None,
+                true_domain_test = info["true_domain_test"],
                 num_output_dims = num_output_dims,
-                prefix = "{0}_stage_{1}_train_model:".format(env_name, j + 1),
+                prefix = "{0}_train_modelDL1:".format(env_name),
                 show_3D_plot = show_3D_plot,
                 show_vs = show_vs,
                 big_domain_ids = big_domain_ids,
-                fix_adaptive_precision_floor = True,
+                num_phases = 4,
             )
-            data_record["loss_precision_floor"] = loss_precision_floor_init
-            info_dict_single["data_record_{0}".format(j + 1)] = deepcopy(data_record)
-            info_dict_single["pred_nets_{0}".format(j + 1)] = deepcopy(T.pred_nets.model_dict)
-            info_dict_single["removed_theories_{0}_0".format(j + 1)] = T.remove_theories_based_on_data(X_test, y_test, threshold = theory_remove_fraction_threshold)
+            info_dict_single["data_record_MDL1"] = deepcopy(data_record_MDL1)
 
-            # Perform MDL training after MSE training if stipulated:
-            if MDL_mode == "both":
-                if loss_core == "mse":
-                    T.set_loss_core("DLs")
-                if hasattr(T, "optimizer"):
-                    delattr(T, "optimizer")
-                data_record_MDL1 = T.fit_model_schedule(
-                    X_train,
-                    y_train,
-                    validation_data = (X_test, y_test),
-                    optim_type = ("adam", 1e-4),
-                    reg_dict = reg_dict,
-                    reg_mode = reg_mode,
-                    reg_smooth = reg_smooth,
-                    domain_fit_setting = None if alternate_training and j > 0 else domain_fit_setting,
-                    forward_steps = forward_steps,
-                    domain_pred_mode = domain_pred_mode,
-                    scheduler_settings = scheduler_settings,
-                    loss_order_decay = (lambda epoch: - epoch / float(loss_decay_scale)) if (j == 0 and loss_decay_scale is not None) else None,
-                    view_init = view_init,
-                    epochs = int(epochs / 2),
-                    patience = int(epochs / 50) if exp_mode != "base" else None,
-                    batch_size = batch_size,
-                    inspect_interval = int(epochs / 100) if is_pendulum else int(epochs / 10),
-                    change_interval = change_interval,
-                    record_interval = record_interval,
-                    record_mode = record_mode,
-                    isplot = isplot,
-                    filename = filename[:-2] + "/{0}_training-modelDL1_stage_{1}".format(env_name, j) if save_image else None,
-                    raise_nan = False,
-                    add_theory_quota = add_theory_quota,
-                    add_theory_limit = add_theory_limit,
-                    add_theory_criteria = add_theory_criteria,
-                    add_theory_loss_threshold = add_theory_loss_threshold,
-                    theory_remove_fraction_threshold = theory_remove_fraction_threshold,
-                    loss_floor = loss_floor,
-                    true_domain_test = info["true_domain_test"],
-                    num_output_dims = num_output_dims,
-                    prefix = "{0}_stage_{1}_train_modelDL1:".format(env_name, j + 1),
-                    show_3D_plot = show_3D_plot,
-                    show_vs = show_vs,
-                    big_domain_ids = big_domain_ids,
-                    num_phases = 4,
-                )
-                info_dict_single["data_record_MDL1_{0}".format(j + 1)] = deepcopy(data_record_MDL1)
-                
-                T.domain_net_on = True
-                print("\ndomain_net turned on\n")
-                data_record_MDL2 = T.fit_model_schedule(
-                    X_train,
-                    y_train,
-                    validation_data = (X_test, y_test),
-                    optim_type = ("adam", 1e-4),
-                    reg_dict = reg_dict,
-                    reg_mode = reg_mode,
-                    reg_smooth = reg_smooth,
-                    domain_fit_setting = None if alternate_training and j > 0 else domain_fit_setting,
-                    forward_steps = forward_steps,
-                    domain_pred_mode = domain_pred_mode,
-                    scheduler_settings = scheduler_settings,
-                    loss_order_decay = (lambda epoch: - epoch / float(loss_decay_scale)) if (j == 0 and loss_decay_scale is not None) else None,
-                    view_init = view_init,
-                    epochs = int(epochs / 2),
-                    patience = int(epochs / 50) if exp_mode != "base" else None,
-                    batch_size = batch_size,
-                    inspect_interval = int(epochs / 100) if is_pendulum else int(epochs / 10),
-                    change_interval = change_interval,
-                    record_interval = record_interval,
-                    record_mode = record_mode,
-                    isplot = isplot,
-                    filename = filename[:-2] + "/{0}_training-modelDL2_stage_{1}".format(env_name, j) if save_image else None,
-                    raise_nan = False,
-                    add_theory_quota = add_theory_quota,
-                    add_theory_limit = add_theory_limit,
-                    add_theory_criteria = add_theory_criteria,
-                    add_theory_loss_threshold = add_theory_loss_threshold,
-                    theory_remove_fraction_threshold = theory_remove_fraction_threshold,
-                    loss_floor = loss_floor,
-                    true_domain_test = info["true_domain_test"],
-                    num_output_dims = num_output_dims,
-                    prefix = "{0}_stage_{1}_train_modelDL2:".format(env_name, j + 1),
-                    show_3D_plot = show_3D_plot,
-                    show_vs = show_vs,
-                    big_domain_ids = big_domain_ids,
-                    num_phases = 2,
-                )
-                info_dict_single["data_record_MDL2_{0}".format(j + 1)] = deepcopy(data_record_MDL2)
-                if hasattr(T, "optimizer"):
-                    delattr(T, "optimizer")
-
-            # Decide whether to stop the training:
-            if j == num_stages - 1:
-                # Remove theories whose fraction is below the remove_theshold:
-                fraction_list = T.get_fraction_list(X_test, y_test)
-                removed_theories = T.remove_theories_based_on_data(X_test, y_test, threshold = theory_remove_fraction_threshold)
-                info_dict_single["fraction_list_{0}".format(j + 1)] = fraction_list
-                info_dict_single["removed_theories_{0}".format(j + 1)] = removed_theories
-                info_dict_single["domain_net_{0}".format(j + 1)] = deepcopy(T.domain_net.model_dict)
-                break
-            mse = T.get_losses(X_test, y_test)['mse_with_domain']
-            if mse < loss_floor:
-                print("The mse = {0} is less than loss floor of {1}, stop.".format(mse, loss_floor))
-                fraction_list = T.get_fraction_list(X_test, y_test)
-                removed_theories = T.remove_theories_based_on_data(X_test, y_test, threshold = theory_remove_fraction_threshold)
-                info_dict_single["fraction_list_{0}".format(j + 1)] = fraction_list
-                info_dict_single["removed_theories_{0}".format(j + 1)] = removed_theories
-                break
-            to_stop = early_stopping_env.monitor(mse)
-            if to_stop:
-                print("The mse loss does not decrease for 2 stages. Continue to next step.")
-                break
-
-            ###############################################################################
-            # Level IV.b. Train domain:
-            ###############################################################################
             T.domain_net_on = True
-            if j > 0 and alternate_training:
-                print("\n" + "=" * 80)
-                print("{0}, trial_times {1}, training domain, stage {2}:".format(env_name, trial_times, j + 1))
-                print("=" * 80 + "\n")
-                data_record_domain = T.fit_domain(
-                    X_train,
-                    y_train,
-                    validation_data = (X_test, y_test),
-                    optim_domain_type = optim_domain_type,
-                    reg_domain_dict = reg_domain_dict,
-                    forward_steps = forward_steps,
-                    reg_domain_mode = reg_domain_mode,
-                    domain_pred_mode = domain_pred_mode,
-                    scheduler_settings = scheduler_settings,
-                    view_init = view_init,
-                    epochs = epochs * 2,
-                    patience = int(epochs * 2 / 50),
-                    batch_size = batch_size,
-                    inspect_interval = int(epochs * 2 / 20),
-                    change_interval = change_interval,
-                    record_interval = record_interval,
-                    record_mode = record_mode,
-                    isplot = isplot,
-                    filename = filename[:-2] + "/{0}_training-domain_stage_{1}".format(env_name, j) if save_image else None,
-                    loss_floor = loss_floor,
-                    true_domain_test = info["true_domain_test"],
-                    prefix = "{0}_stage_{1}_train_domain:".format(env_name, j + 1),
-                    show_3D_plot = show_3D_plot,
-                    show_vs = show_vs,
-                    big_domain_ids = big_domain_ids,
-                )
-                info_dict_single["data_record_domain_{0}".format(j + 1)] = deepcopy(data_record_domain)
-                mse = T.get_losses(X_test, y_test)['mse_with_domain']
-                if mse < loss_floor:
-                    print("The mse = {0} is less than loss floor of {1}, stop.".format(mse, loss_floor))
-                    fraction_list = T.get_fraction_list(X_test, y_test)
-                    removed_theories = T.remove_theories_based_on_data(X_test, y_test, threshold = theory_remove_fraction_threshold)
-                    info_dict_single["fraction_list_{0}".format(j + 1)] = fraction_list
-                    info_dict_single["removed_theories_{0}".format(j + 1)] = removed_theories
-                    info_dict_single["domain_net_{0}".format(j + 1)] = deepcopy(T.domain_net.model_dict)
-                    break
+            print("\ndomain_net turned on\n")
+            data_record_MDL2 = T.fit_model_schedule(
+                X_train,
+                y_train,
+                validation_data = (X_test, y_test),
+                optim_type = ("adam", 1e-4),
+                reg_dict = reg_dict,
+                reg_mode = reg_mode,
+                reg_smooth = reg_smooth,
+                domain_fit_setting = domain_fit_setting,
+                forward_steps = forward_steps,
+                domain_pred_mode = domain_pred_mode,
+                scheduler_settings = scheduler_settings,
+                loss_order_decay = (lambda epoch: - epoch / float(loss_decay_scale)) if (loss_decay_scale is not None) else None,
+                view_init = view_init,
+                epochs = int(epochs / 2),
+                patience = int(epochs / 50) if exp_mode != "base" else None,
+                batch_size = batch_size,
+                inspect_interval = int(epochs / 100) if is_pendulum else int(epochs / 10),
+                change_interval = change_interval,
+                record_interval = record_interval,
+                record_mode = record_mode,
+                isplot = isplot,
+                filename = filename[:-2] + "/{0}_training-modelDL2".format(env_name) if save_image else None,
+                raise_nan = False,
+                add_theory_quota = add_theory_quota,
+                add_theory_limit = add_theory_limit,
+                add_theory_criteria = add_theory_criteria,
+                add_theory_loss_threshold = add_theory_loss_threshold,
+                theory_remove_fraction_threshold = theory_remove_fraction_threshold,
+                loss_floor = loss_floor,
+                true_domain_test = info["true_domain_test"],
+                num_output_dims = num_output_dims,
+                prefix = "{0}_train_modelDL2:".format(env_name),
+                show_3D_plot = show_3D_plot,
+                show_vs = show_vs,
+                big_domain_ids = big_domain_ids,
+                num_phases = 2,
+            )
+            info_dict_single["data_record_MDL2"] = deepcopy(data_record_MDL2)
+            if hasattr(T, "optimizer"):
+                delattr(T, "optimizer")
 
-            # Remove theories whose fraction is below the remove_theshold:
-            fraction_list = T.get_fraction_list(X_test, y_test)
-            removed_theories = T.remove_theories_based_on_data(X_test, y_test, threshold = theory_remove_fraction_threshold)
-            info_dict_single["fraction_list_{0}".format(j + 1)] = fraction_list
-            info_dict_single["removed_theories_{0}".format(j + 1)] = removed_theories
-            info_dict_single["domain_net_{0}".format(j + 1)] = deepcopy(T.domain_net.model_dict)
+        # Remove theories whose fraction is below the remove_theshold:
+        fraction_list = T.get_fraction_list(X_test, y_test)
+        removed_theories = T.remove_theories_based_on_data(X_test, y_test, threshold = theory_remove_fraction_threshold)
+        info_dict_single["fraction_list"] = fraction_list
+        info_dict_single["removed_theories"] = removed_theories
+        info_dict_single["domain_net"] = deepcopy(T.domain_net.model_dict)
         
         # Record pred_nets and domain_nets before simplification
         pred_nets = deepcopy(T.pred_nets)
