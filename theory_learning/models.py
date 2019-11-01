@@ -21,6 +21,7 @@ from AI_physicist.theory_learning.util_theory import logplus
 
 
 class Loss_Fun_Cumu(nn.Module):
+    """Implement the generalized-mean loss for differentiable divide-and-conquer. """
     def __init__(
         self,
         core,

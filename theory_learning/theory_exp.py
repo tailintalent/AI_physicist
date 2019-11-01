@@ -51,7 +51,7 @@ standardize = standardize_symbolic_expression
 
 csv_filename_list = get_mystery(50000, range(4,7), range(1, 6)) + get_mystery(50000, [20], range(1, 6)) + get_mystery(50000, range(7, 11), range(1, 6))
 
-forward_steps = 1
+forward_steps = 1            # Number of forward steps to predict
 num_output_dims = 2          # It sets the dimension of output
 num_input_steps = 2          # It sets the number of steps for the input
 exp_mode = "continuous"      # Choose from "continuous", "newb" and "base"
