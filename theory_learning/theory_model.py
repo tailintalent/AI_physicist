@@ -27,7 +27,7 @@ from AI_physicist.settings.filepath import theory_PATH
 from AI_physicist.settings.global_param import COLOR_LIST, PrecisionFloorLoss
 from AI_physicist.pytorch_net.util import Loss_Fun, make_dir, Early_Stopping, record_data, plot_matrices, get_args, base_repr, base_repr_2_int
 from AI_physicist.pytorch_net.util import sort_two_lists, to_string, Loss_with_uncertainty, get_optimizer, Gradient_Noise_Scale_Gen, to_np_array, to_Variable, to_Boolean, get_criterion
-from AI_physicist.pytorch_net.net import MLP, Net_Ensemble, load_model_dict, construct_net_ensemble_from_nets, train_simple
+from AI_physicist.pytorch_net.net import MLP, Model_Ensemble, load_model_dict, construct_model_ensemble_from_nets, train_simple
 
 
 # In[ ]:
@@ -289,9 +289,9 @@ class Theory_Training(nn.Module):
             for i in range(self.num_theories - len(proposed_model_list)):
                 net = MLP(input_size = self.input_size, struct_param = struct_param_pred, settings = settings_pred, is_cuda = self.is_cuda)
                 proposed_model_list.append(net)
-            self.pred_nets = construct_net_ensemble_from_nets(proposed_model_list)
+            self.pred_nets = construct_model_ensemble_from_nets(proposed_model_list)
         else:
-            self.pred_nets = Net_Ensemble(num_models = self.num_theories, input_size = self.input_size if not self.is_Lagrangian else int(self.input_size / 2), 
+            self.pred_nets = Model_Ensemble(num_models = self.num_theories, input_size = self.input_size if not self.is_Lagrangian else int(self.input_size / 2), 
                                           struct_param = struct_param_pred, settings = settings_pred, is_cuda = self.is_cuda)
         
         self.domain_net = MLP(input_size = self.input_size, struct_param = struct_param_domain, settings = settings_domain, is_cuda = self.is_cuda)
@@ -308,7 +308,7 @@ class Theory_Training(nn.Module):
         self.loss_fun_dict = {}
         self.loss_fun_dict["loss_fun_cumu"] = self.loss_fun_cumu
         if self.struct_param_uncertainty is not None:
-            self.uncertainty_nets = Net_Ensemble(num_models = self.num_theories, input_size = self.input_size, 
+            self.uncertainty_nets = Model_Ensemble(num_models = self.num_theories, input_size = self.input_size, 
                                                  struct_param = struct_param_uncertainty, settings = settings_uncertainty, is_cuda = self.is_cuda)
             self.loss_with_uncertainty = Loss_with_uncertainty(core = self.loss_core)
             self.net_dict["uncertainty_nets"] = self.uncertainty_nets

@@ -33,7 +33,7 @@ from AI_physicist.theory_learning.models import Statistics_Net, Generative_Net
 from AI_physicist.settings.filepath import theory_PATH
 from AI_physicist.pytorch_net.util import Loss_Fun, Loss_with_uncertainty, Batch_Generator, get_criterion, to_np_array, make_dir, Early_Stopping
 from AI_physicist.pytorch_net.util import record_data, plot_matrices, get_args, sort_two_lists, get_param_name_list
-from AI_physicist.pytorch_net.net import MLP, Net_Ensemble, combine_net_ensembles, load_model_dict, load_model_dict_net, load_model_dict_net_ensemble, construct_net_ensemble_from_nets
+from AI_physicist.pytorch_net.net import MLP, Model_Ensemble, combine_model_ensembles, load_model_dict, load_model_dict_net, load_model_dict_model_ensemble, construct_model_ensemble_from_nets
 
 
 # ## Helper functions for symbolic unification:
@@ -637,7 +637,7 @@ class Theory_Hub(object):
         else:
             added_theory_info = {}
             if domain_net.__class__.__name__ == "MLP":
-                domain_net = domain_net.split_to_net_ensemble(mode = "standardize")
+                domain_net = domain_net.split_to_model_ensemble(mode = "standardize")
             else:
                 domain_net.standardize(mode = "b_mean_zero")
             num_models = domain_net.num_models
@@ -694,7 +694,7 @@ class Theory_Hub(object):
         domain_net_target = "domain_net_simplified_final",
         dataset_target = "dataset",
         ):
-        pred_nets = load_model_dict_net_ensemble(info_dict[pred_nets_target], is_cuda = self.is_cuda)
+        pred_nets = load_model_dict_model_ensemble(info_dict[pred_nets_target], is_cuda = self.is_cuda)
         domain_net = load_model_dict_net(info_dict[domain_net_target], is_cuda = self.is_cuda)
         dataset = info_dict["dataset"]
         self.add_theories(name, pred_nets, domain_net, dataset)
@@ -786,7 +786,7 @@ class Theory_Hub(object):
             all_models = [theory_tuple.pred_net for theory_tuple in self.theory.values()]
         else:
             all_models = [theory_tuple.pred_net for theory_tuple in self.theory.values() if theory_tuple.pred_net.input_size == input_size]
-        return construct_net_ensemble_from_nets(all_models)
+        return construct_model_ensemble_from_nets(all_models)
 
 
     def get_loss(self):
@@ -848,8 +848,8 @@ class Theory_Hub(object):
         for name, theory_tuple in theory_tuples.items():
             pred_net_list.append(theory_tuple.pred_net)
             domain_net_list.append(theory_tuple.domain_net)
-        pred_nets = construct_net_ensemble_from_nets(pred_net_list)
-        domain_net = construct_net_ensemble_from_nets(domain_net_list)
+        pred_nets = construct_model_ensemble_from_nets(pred_net_list)
+        domain_net = construct_model_ensemble_from_nets(domain_net_list)
         return pred_nets, domain_net
 
 
@@ -922,7 +922,7 @@ class Theory_Hub(object):
         # Propose theories models whose fraction_best exceeds the fraction_threshold:
         fraction_best_list = []
         theory_name_list = []
-        pred_nets_combined = construct_net_ensemble_from_nets(list(theory_models.values()))
+        pred_nets_combined = construct_model_ensemble_from_nets(list(theory_models.values()))
         if is_Lagrangian:
             preds = get_Lagrangian_loss(pred_nets_combined, X)
         else:
@@ -953,7 +953,7 @@ class Theory_Hub(object):
 
         if len(proposed_theory_models_sorted) == 0:
             return {}, {}
-        proposed_pred_nets = construct_net_ensemble_from_nets([theory_info["theory_model"] for theory_info in proposed_theory_models_sorted.values()])
+        proposed_pred_nets = construct_model_ensemble_from_nets([theory_info["theory_model"] for theory_info in proposed_theory_models_sorted.values()])
         if is_Lagrangian:
             preds = get_Lagrangian_loss(proposed_pred_nets, X)
         else:

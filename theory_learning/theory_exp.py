@@ -49,8 +49,6 @@ standardize = standardize_symbolic_expression
 # In[2]:
 
 
-csv_filename_list = get_mystery(50000, range(4,7), range(1, 6)) + get_mystery(50000, [20], range(1, 6)) + get_mystery(50000, range(7, 11), range(1, 6))
-
 forward_steps = 1            # Number of forward steps to predict
 num_output_dims = 2          # It sets the dimension of output
 num_input_steps = 2          # It sets the number of steps for the input
@@ -81,6 +79,8 @@ max_trial_times = 1         # Maximum number of trial times before going on to n
 is_simplify_model = True    # Whether to perform simplification of theory models
 is_simplify_domain = False  # Whether to perform simplification of theory domains
 record_mode = 2
+
+csv_filename_list = get_mystery(50000, range(4,7), range(1, 6)) + get_mystery(50000, [20], range(1, 6)) + get_mystery(50000, range(7, 11), range(1, 6))
 
 
 # ## Settings:
