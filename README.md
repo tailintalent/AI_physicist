@@ -14,7 +14,7 @@ First clone the directory. Since the model construction and training of this rep
 git submodule init; git submodule update
 ```
 
-The PyTorch requirement is >=0.4.1.
+The PyTorch requirement is >=0.4.1. Other requirements are in [requirements.txt](https://github.com/tailintalent/AI_physicist/blob/master/requirements.txt)
 
 The datasets used for the paper is provided in [here](https://space.mit.edu/home/tegmark/aiphysicist.html). Put the unzipped "MYSTERIES", "GROUND_TRUTH" and "filenames.csv" directly under datasets/.
 
@@ -28,8 +28,10 @@ where the ``JOB_ID'' is a number (between 0 to TOTAL # of hyperparameter combina
 
 [theory_learning/theory_unification.ipynb](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_unification.ipynb) in addition contains the unification algorithm.
 
+The AI Physicist uses [pytorch_net](https://github.com/tailintalent/pytorch_net) for flexible construction of PyTorch neural networks with different types of layers, including Simple_Layer (dense layer), Symbolic_Layer (a symbolic layer using sympy with learnable parameters), and methods for training, simplification and conversion between different types of layers. See its [tutorial](https://github.com/tailintalent/pytorch_net/blob/master/Tutorial.ipynb) for how to use it.
+
 ## New features added to the AI Physicist:
-Features are continuously added to the AI physicist. These features may or may not work, and can be turned on and off in the hyperparameter settings in theory_learning/theory_exp.ipynb or in run_exp/run_theory.py. Some features added compared to the original paper (Wu and Tegmark, 2019) are:
+Features are continuously added to the AI physicist. These features may or may not work, and can be turned on and off in the hyperparameter settings in [theory_learning/theory_exp.ipynb](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_exp.ipynb) or in [run_exp/run_theory.py](https://github.com/tailintalent/AI_physicist/blob/master/run_exp/run_theory.py). Some features added compared to the original paper (Wu and Tegmark, 2019) are:
 - Autoencoder
 - Learning Lagrangian instead of the Equation of Motion
 - Annealing of order for the generalized-mean loss
