@@ -239,6 +239,7 @@ def load_model_dict(model_dict):
 
 
 class Theory_Training(nn.Module):
+    """Implementing the core subroutine of the differentiable-divide-and-conquer (DDAC)"""
     def __init__(
         self,
         num_theories,
@@ -513,7 +514,7 @@ class Theory_Training(nn.Module):
                     if U.domain_net_on and "DL" not in U.get_loss_core():
                         if isplot:
                             print("\nPerform joint training of all models:\n")
-                        data_record = U.fit_model_schedule(X, y, 
+                        data_record = U.iterative_train_schedule(X, y, 
                                                   validation_data = validation_data,
                                                   reg_dict = U.reg_dict,
                                                   reg_mode = U.reg_mode,
@@ -544,7 +545,7 @@ class Theory_Training(nn.Module):
                     else:
                         if isplot:
                             print("\nPerform joint training of all models and domains:\n")
-                        data_record = U.fit_model_schedule(X, y, 
+                        data_record = U.iterative_train_schedule(X, y, 
                                                   validation_data = validation_data, 
                                                   reg_dict = U.reg_dict,
                                                   reg_mode = U.reg_mode,
@@ -976,7 +977,7 @@ class Theory_Training(nn.Module):
         return dl
 
 
-    def fit_model_schedule(
+    def iterative_train_schedule(
         self,
         X_train,
         y_train,
@@ -1012,7 +1013,7 @@ class Theory_Training(nn.Module):
         ):
         """Implements steps 2 to 6 in Alg. 2 in Wu and Tegmark (2019)"""
         if self.get_loss_core() == "mse":
-            return self.fit_model(
+            return self.iterative_train(
                                 X_train = X_train,
                                 y_train = y_train,
                                 validation_data = validation_data,
@@ -1058,7 +1059,7 @@ class Theory_Training(nn.Module):
                 print("## Phase {0}:\tcurrent DL precision_floor: {1:.9f}".format(ii, dl))
                 # Tentative fitting:
                 loss_dict = U.get_losses(X_test, y_test, forward_steps = forward_steps, **kwargs)
-                data_record = U.fit_model(
+                data_record = U.iterative_train(
                                 X_train = X_train,
                                 y_train = y_train,
                                 validation_data = validation_data,
@@ -1108,7 +1109,7 @@ class Theory_Training(nn.Module):
             raise
     
 
-    def fit_model(
+    def iterative_train(
         self,
         X_train,
         y_train,

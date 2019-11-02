@@ -48,7 +48,7 @@ def unification_symbolic(
     relative_diff_threshold=0,
     verbose=True,
     ):
-    """Unification of symbolic theories, implementing the Alg. 4 in (Wu and Tegmark, 2019)."""
+    """Unification of symbolic theories, implementing the Alg. 4 in Wu and Tegmark (2019)."""
     df_dict_list = []
     skeleton_dict = {}
     for key, theory in theory_collection.items():

@@ -49,9 +49,9 @@ standardize = standardize_symbolic_expression
 # In[2]:
 
 
-forward_steps = 1            # Number of forward steps to predict
 num_output_dims = 2          # It sets the dimension of output
 num_input_steps = 2          # It sets the number of steps for the input
+forward_steps = 1            # Number of forward steps to predict
 exp_mode = "continuous"      # Choose from "continuous" (full AI Physicist), "newb" (newborn) and "base" (baseline)
 data_format = "states"       # Choose from "states" or "images"
 num_theories_init = 4        # Number of theories to start with
@@ -224,7 +224,6 @@ else:
     raise
 batch_size = min(batch_size, num_examples)
 save_image = True
-is_domain_fit_setting = True
 render = False
 loss_floor = 1e-12
 csv_dirname = "../datasets/"
@@ -438,11 +437,8 @@ for env_name in csv_filename_list:
     reg_dict = {"pred_nets": {"weight": reg_amp, "bias": reg_amp}}
     reg_domain_dict = {"domain_net": {"weight": reg_domain_amp, "bias": reg_domain_amp}}
     
-    # Setting up training model and domain at the same time at the first stage of training:
-    if is_domain_fit_setting:
-        domain_fit_setting = {"optim_domain_type": optim_domain_type, "reg_domain_dict": reg_domain_dict, "reg_domain_mode": reg_domain_mode}
-    else:
-        domain_fit_setting = None 
+    # Settings for the simultaneous fitting of domain:
+    domain_fit_setting = {"optim_domain_type": optim_domain_type, "reg_domain_dict": reg_domain_dict, "reg_domain_mode": reg_domain_mode}
     
     
     if data_format == "images":
@@ -539,7 +535,7 @@ for env_name in csv_filename_list:
         print("=" * 80 + "\n")
         loss_precision_floor_init = 10
         T.set_loss_core(loss_core, loss_precision_floor_init)
-        data_record = T.fit_model(
+        data_record = T.iterative_train(
             X_train,
             y_train,
             validation_data = (X_test, y_test),
@@ -588,7 +584,7 @@ for env_name in csv_filename_list:
                 T.set_loss_core("DLs")
             if hasattr(T, "optimizer"):
                 delattr(T, "optimizer")
-            data_record_MDL1 = T.fit_model_schedule(
+            data_record_MDL1 = T.iterative_train_schedule(
                 X_train,
                 y_train,
                 validation_data = (X_test, y_test),
@@ -629,8 +625,8 @@ for env_name in csv_filename_list:
             info_dict_single["data_record_MDL1"] = deepcopy(data_record_MDL1)
 
             T.domain_net_on = True
-            print("\ndomain_net turned on\n")
-            data_record_MDL2 = T.fit_model_schedule(
+            print("\ndomain_net turned on, and each theory only optimize in its domain:\n")
+            data_record_MDL2 = T.iterative_train_schedule(
                 X_train,
                 y_train,
                 validation_data = (X_test, y_test),

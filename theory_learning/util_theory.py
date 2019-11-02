@@ -254,14 +254,60 @@ def load_theory_training(dirname, filename, env_name, info_dict = None, is_pred_
     return T, info_dict
 
 
-def get_dataset_from_file(env_name, num_output_dims = 2, num_input_steps = 3, forward_steps = 1, num_examples = None, csv_dirname = "../datasets/MYSTERIES/", is_Lagrangian = False, is_cuda = False):
+def get_dataset_from_file(env_name, num_output_dims = 2, num_input_steps = 3, forward_steps = 1, num_examples = None, csv_dirname = "../datasets/MYSTERIES/", is_Lagrangian = False, mode = "classified", is_cuda = False):
     if "mystery" in env_name and num_output_dims == 2:
-        dataset = prepare_data_from_matrix_file(csv_dirname + "2Dclassified" + env_name[2:] + ".csv", mode = "classified", num_output_dims = num_output_dims, num_input_steps = num_input_steps, total_provided_steps = 3, forward_steps = forward_steps, num_examples = num_examples, is_Lagrangian = is_Lagrangian, is_cuda = is_cuda)
+        dataset = prepare_data_from_matrix_file(csv_dirname + "2Dclassified" + env_name[2:] + ".csv", mode = mode, num_output_dims = num_output_dims, num_input_steps = num_input_steps, total_provided_steps = 3, forward_steps = forward_steps, num_examples = num_examples, is_Lagrangian = is_Lagrangian, is_cuda = is_cuda)
     elif "mystery" in env_name and num_output_dims == 4:
-        dataset = prepare_data_from_matrix_file(csv_dirname + "4Dclassified" + env_name[2:] + ".csv", mode = "classified", num_output_dims = num_output_dims, num_input_steps = num_input_steps, total_provided_steps = 1, forward_steps = forward_steps, num_examples = num_examples, is_Lagrangian = is_Lagrangian, is_cuda = is_cuda)
+        dataset = prepare_data_from_matrix_file(csv_dirname + "4Dclassified" + env_name[2:] + ".csv", mode = mode, num_output_dims = num_output_dims, num_input_steps = num_input_steps, total_provided_steps = 1, forward_steps = forward_steps, num_examples = num_examples, is_Lagrangian = is_Lagrangian, is_cuda = is_cuda)
     else:
-        dataset = prepare_data_from_matrix_file(csv_dirname + "classified" + env_name + ".csv", mode = "classified", num_output_dims = num_output_dims, num_input_steps = num_input_steps, total_provided_steps = 3, forward_steps = forward_steps, num_examples = num_examples, is_Lagrangian = is_Lagrangian, is_cuda = is_cuda)
+        dataset = prepare_data_from_matrix_file(csv_dirname + "classified" + env_name + ".csv", mode = mode, num_output_dims = num_output_dims, num_input_steps = num_input_steps, total_provided_steps = 3, forward_steps = forward_steps, num_examples = num_examples, is_Lagrangian = is_Lagrangian, is_cuda = is_cuda)
     return dataset
+
+
+def prepare_data_from_matrix_file(filename, num_output_dims, num_input_steps = 3, total_provided_steps = 3, num_examples = None, mode = "classified", forward_steps = 1, is_Lagrangian = False, is_cuda = False):
+    from sklearn.model_selection import train_test_split
+    matrix = np.genfromtxt(filename, delimiter=',')
+    if is_Lagrangian:
+        matrix = transform_data_to_phase_space(matrix, Dt)
+    num = matrix.shape[0]
+    if mode == "classified":
+        if not is_Lagrangian:
+            X = matrix[: num - (forward_steps - 1), 2 * (total_provided_steps - num_input_steps): -num_output_dims - 1]
+            y = matrix[forward_steps - 1:, -num_output_dims - 1: -1]
+        else:
+            X = matrix[: num - (forward_steps - 1), :-1]
+            y = np.zeros((num, 2))
+        true_domain = matrix[:num - (forward_steps - 1), -1:].astype(int)
+        X_train, X_test, y_train, y_test, true_domain_train, true_domain_test = train_test_split(X, y, true_domain, test_size = 0.2)
+    else:
+        if not is_Lagrangian:
+            X = matrix[: num - (forward_steps - 1), 2 * (total_provided_steps - num_input_steps): -num_output_dims]
+            y = matrix[forward_steps - 1:, -num_output_dims:]
+        else:
+            X = matrix[: num - (forward_steps - 1), :]
+            y = np.zeros((num, 2))
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2)
+    if num_examples is not None:
+        if num_examples < X_train.shape[0]:
+            chosen = np.random.choice(len(X_train), size = num_examples, replace = False)
+            X_train = X_train[chosen]
+            y_train = y_train[chosen]
+    num_examples = X_train.shape[0]
+    X_train, X_test, y_train, y_test = to_Variable(X_train, X_test, y_train, y_test, is_cuda = is_cuda)
+    if mode == "classified":
+        true_domain_train = torch.LongTensor(true_domain_train)
+        true_domain_test = torch.LongTensor(true_domain_test)
+        if is_cuda:
+            true_domain_train = true_domain_train.cuda()
+            true_domain_test = true_domain_test.cuda()
+    input_size = tuple(X_train.size()[1:]) if not is_Lagrangian else (8,)
+    if len(input_size) == 1:
+        input_size = input_size[0]
+    info = {"input_size": input_size, "file_source": filename}
+    if mode == "classified":
+        info["true_domain_train"] = true_domain_train
+        info["true_domain_test"] = true_domain_test
+    return ((X_train, y_train), (X_test, y_test), (None, None)), info
 
 
 def get_df(dirname, write_combine_table = False):
@@ -764,52 +810,6 @@ def prepare_data_from_file(filename, time_steps = 3, output_dims = 0, is_flatten
     if len(input_size) == 1:
         input_size = input_size[0]
     return ((X_train, y_train), (X_test, y_test), (None, None)), {"input_size": input_size, "file_source": filename}
-
-
-def prepare_data_from_matrix_file(filename, num_output_dims, num_input_steps = 3, total_provided_steps = 3, num_examples = None, mode = "classified", forward_steps = 1, is_Lagrangian = False, is_cuda = False):
-    from sklearn.model_selection import train_test_split
-    matrix = np.genfromtxt(filename, delimiter=',')
-    if is_Lagrangian:
-        matrix = transform_data_to_phase_space(matrix, Dt)
-    num = matrix.shape[0]
-    if mode == "classified":
-        if not is_Lagrangian:
-            X = matrix[: num - (forward_steps - 1), 2 * (total_provided_steps - num_input_steps): -num_output_dims - 1]
-            y = matrix[forward_steps - 1:, -num_output_dims - 1: -1]
-        else:
-            X = matrix[: num - (forward_steps - 1), :-1]
-            y = np.zeros((num, 2))
-        true_domain = matrix[:num - (forward_steps - 1), -1:].astype(int)
-        X_train, X_test, y_train, y_test, true_domain_train, true_domain_test = train_test_split(X, y, true_domain, test_size = 0.2)
-    else:
-        if not is_Lagrangian:
-            X = matrix[: num - (forward_steps - 1), 2 * (total_provided_steps - num_input_steps): -num_output_dims]
-            y = matrix[forward_steps - 1:, -num_output_dims:]
-        else:
-            X = matrix[: num - (forward_steps - 1), :]
-            y = np.zeros((num, 2))
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2)
-    if num_examples is not None:
-        if num_examples < X_train.shape[0]:
-            chosen = np.random.choice(len(X_train), size = num_examples, replace = False)
-            X_train = X_train[chosen]
-            y_train = y_train[chosen]
-    num_examples = X_train.shape[0]
-    X_train, X_test, y_train, y_test = to_Variable(X_train, X_test, y_train, y_test, is_cuda = is_cuda)
-    if mode == "classified":
-        true_domain_train = torch.LongTensor(true_domain_train)
-        true_domain_test = torch.LongTensor(true_domain_test)
-        if is_cuda:
-            true_domain_train = true_domain_train.cuda()
-            true_domain_test = true_domain_test.cuda()
-    input_size = tuple(X_train.size()[1:]) if not is_Lagrangian else (8,)
-    if len(input_size) == 1:
-        input_size = input_size[0]
-    info = {"input_size": input_size, "file_source": filename}
-    if mode == "classified":
-        info["true_domain_train"] = true_domain_train
-        info["true_domain_test"] = true_domain_test
-    return ((X_train, y_train), (X_test, y_test), (None, None)), info
 
 
 def transform_data_to_phase_space(matrix, dt = Dt):
