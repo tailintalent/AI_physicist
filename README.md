@@ -20,6 +20,15 @@ The datasets used for the paper is provided in [here](https://space.mit.edu/home
 
 ## Usage
 The main experiment file is [theory_learning/theory_exp.ipynb](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_exp.ipynb) (or the .py counterpart for terminal), which contains the DDAC, simplification and lifelong learning algorithms for the AI Physicist.
+
+Before running the experiment, first set up the path and correct settings for the datasets in line 61-83 of [theory_exp.py](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_exp.py) (or the corresponding [theory_exp.ipynb](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_exp.ipynb) file). Particularly, important settings are:
+- csv_dirname: path to the dataset file
+- csv_filename_list: list of dataset files to run, so that each dataset's path is csv_dirname + env_name + ".csv", where env_name is the element in csv_filename_list
+- is_classified: whether the csv files provide the true_domain id for evaluation
+- num_output_dims: dimension of states at each time step
+- num_input_dims: number of time steps in the past used as X
+- Other important settings, e.g. num_theories_init (number of random theories to start with) and add_theory_limit (maximum allowed number of theories).
+
 To run batch experiments in a cluster, set up the hyperparameters in run_exp/run_theory.py, and run
 ```
 python run_exp/run_theory.py JOB_ID
