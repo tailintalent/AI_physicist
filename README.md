@@ -16,7 +16,18 @@ git submodule init; git submodule update
 
 The PyTorch requirement is >=0.4.1. Other requirements are in [requirements.txt](https://github.com/tailintalent/AI_physicist/blob/master/requirements.txt)
 
-The datasets used for the paper is provided in [here](https://space.mit.edu/home/tegmark/aiphysicist.html). Put the unzipped "MYSTERIES", "GROUND_TRUTH" and "filenames.csv" directly under datasets/.
+The datasets used for the paper is provided in [here](https://space.mit.edu/home/tegmark/aiphysicist.html). Put the unzipped "MYSTERIES", "GROUND_TRUTH" directly under datasets/. To use your own dataset, put your csv file under datasets/MYSTERIES/. For each dataset, the first num_output_dims * num_input_dims columns are used as input X, the next num_output_dims columns are used as target Y, and if is_classified = True, the last column should provide true domain ID for evaluation. Take num_output_dims = 2, num_input_dims = 2, is_classified = True as an example, the dataset should look like:
+
+x1, y1, x2, y2, x3, y3, domain_id1
+
+x2, y2, x3, y3, x4, y4, domain_id2
+
+x3, y3, x4, y4, x5, y5, domain_id3
+
+...
+
+
+If using files in "GROUND_TRUTH" (where true domain ids are provided as evaluation), set csv_dirname = "../datasets/GROUND_TRUTH/" and is_classified = True; If using files in "MYSTERIES", set csv_dirname = "../datasets/MYSTERIES/" and is_classified = False;
 
 ## Usage
 The main experiment file is [theory_learning/theory_exp.ipynb](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_exp.ipynb) (or the [theory_exp.py](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_exp.py) counterpart for terminal. Both of which can be directly run), which contains the DDAC, simplification and lifelong learning algorithms for the AI Physicist.
