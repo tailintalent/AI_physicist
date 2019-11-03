@@ -612,7 +612,7 @@ for env_name in csv_filename_list:
                 add_theory_loss_threshold = add_theory_loss_threshold,
                 theory_remove_fraction_threshold = theory_remove_fraction_threshold,
                 loss_floor = loss_floor,
-                true_domain_test = info["true_domain_test"],
+                true_domain_test = info["true_domain_test"] if "true_domain_test" in info else None,
                 num_output_dims = num_output_dims,
                 prefix = "{0}_train_modelDL1:".format(env_name),
                 show_3D_plot = show_3D_plot,
@@ -654,7 +654,7 @@ for env_name in csv_filename_list:
                 add_theory_loss_threshold = add_theory_loss_threshold,
                 theory_remove_fraction_threshold = theory_remove_fraction_threshold,
                 loss_floor = loss_floor,
-                true_domain_test = info["true_domain_test"],
+                true_domain_test = info["true_domain_test"] if "true_domain_test" in info else None,
                 num_output_dims = num_output_dims,
                 prefix = "{0}_train_modelDL2:".format(env_name),
                 show_3D_plot = show_3D_plot,
@@ -680,7 +680,10 @@ for env_name in csv_filename_list:
         #########################################################################################################
         # Level III.b. Simplify theory models and/or domains:
         #########################################################################################################
-        kwargs = {"true_domain_test": info["true_domain_test"], "big_domain_ids": big_domain_ids, "is_Lagrangian": is_Lagrangian}
+        kwargs = {"true_domain_test": info["true_domain_test"] if "true_domain_test" in info else None, 
+                  "big_domain_ids": big_domain_ids,
+                  "is_Lagrangian": is_Lagrangian,
+                 }
         if is_simplify_model:
             print("\n" + "=" * 150)
             print("{0}, {1}".format(env_name, "simplifying model:"))
@@ -725,7 +728,8 @@ for env_name in csv_filename_list:
                 except:
                     pass
             if save_image:
-                T.plot(X_test, y_test, true_domain = info["true_domain_test"], view_init = view_init, figsize = (10, 8), filename = filename[:-2] + "/{0}_model-simplified".format(env_name) if save_image else None, is_show = isplot)
+                T.plot(X_test, y_test, true_domain = info["true_domain_test"] if "true_domain_test" in info else None, 
+                       view_init = view_init, figsize = (10, 8), filename = filename[:-2] + "/{0}_model-simplified".format(env_name) if save_image else None, is_show = isplot)
 
             # Simplifying domain:
             if is_simplify_domain:
@@ -755,7 +759,8 @@ for env_name in csv_filename_list:
                 T.domain_net.show_expression()
                 print()
                 if save_image:
-                    T.plot(X_test, y_test, true_domain = info["true_domain_test"], view_init = view_init, figsize = (10, 8), filename = filename[:-2] + "/{0}_domain-simplified".format(env_name) if save_image else None, is_show = isplot)
+                    T.plot(X_test, y_test, true_domain = info["true_domain_test"] if "true_domain_test" in info else None, 
+                           view_init = view_init, figsize = (10, 8), filename = filename[:-2] + "/{0}_domain-simplified".format(env_name) if save_image else None, is_show = isplot)
 
             print("\n\n")
 
