@@ -4,7 +4,7 @@ exp_id=[
 "exp1.0",
 ]
 
-env_names=[
+env_source=[
 "file",
 ]
 
@@ -141,7 +141,7 @@ def assign_array_id(array_id, param_list):
 
 array_id = int(sys.argv[1])
 param_list = [exp_id,
-				env_names,
+				env_source,
 				exp_mode,
 				num_theories_init,
 				pred_nets_neurons,

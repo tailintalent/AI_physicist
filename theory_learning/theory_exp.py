@@ -27,7 +27,7 @@ from AI_physicist.theory_learning.models import Loss_Fun_Cumu
 from AI_physicist.theory_learning.theory_model import Theory_Training, get_loss, get_best_model_idx, get_preds_valid, get_valid_prob
 from AI_physicist.theory_learning.theory_hub import Theory_Hub, load_model_dict_at_theory_hub
 from AI_physicist.theory_learning.util_theory import plot_theories, plot3D, process_loss, plot_loss_record, to_one_hot, plot_indi_domain, get_mystery, to_pixels, standardize_symbolic_expression, check_expression_matching
-from AI_physicist.theory_learning.util_theory import prepare_data_from_matrix_file, get_epochs, export_csv_with_domain_prediction, extract_target_expression, get_coeff_learned_list, load_theory_training, get_dataset_from_file, get_piecewise_dataset
+from AI_physicist.theory_learning.util_theory import get_epochs, export_csv_with_domain_prediction, extract_target_expression, get_coeff_learned_list, load_theory_training, get_dataset, get_piecewise_dataset
 from AI_physicist.settings.filepath import theory_PATH
 from AI_physicist.settings.global_param import COLOR_LIST
 from AI_physicist.pytorch_net.util import Loss_Fun, make_dir, Loss_with_uncertainty, Early_Stopping, record_data, plot_matrices, get_args, serialize, to_string, filter_filename, to_np_array, to_Variable
@@ -49,38 +49,38 @@ standardize = standardize_symbolic_expression
 # In[2]:
 
 
-num_output_dims = 2          # It sets the dimension of output
-num_input_steps = 2          # It sets the number of steps for the input
-forward_steps = 1            # Number of forward steps to predict
-exp_mode = "continuous"      # Choose from "continuous" (full AI Physicist), "newb" (newborn) and "base" (baseline)
-data_format = "states"       # Choose from "states" or "images"
-num_theories_init = 4        # Number of theories to start with
-pred_nets_activation = "linear" # Activation for the prediction function f. Choose from "linear", "leakyRelu"
-num_layers = 3               # Number of layers for the prediction function f.
-# scheduler_settings = ("LambdaLR", "exp", 2, False)    # Settings for the learning rate scheduler
-scheduler_settings = ("ReduceLROnPlateau", 40, 0.1)   # Settings for the learning rate scheduler
-matching_numerical_tolerance = 2e-4 # The tolerance below which you regard the numerical coefficient matches.
-matching_snapped_tolerance = 1e-9   # The tolerance below which you regard the snapped coefficient matches.
-add_theory_loss_threshold = 2e-6
-add_theory_criteria = ("loss_with_domain", 0)
-add_theory_quota = 1
-add_theory_limit = None     # maximum allowed number of theories. If None, do not set limit
-MDL_mode = "both"
-show_3D_plot = False
-show_vs = False
+########################################
+# Setting up path to dataset files. The data files are csv_dirname + env_name + ".csv", 
+# where env_name are elements in the csv_filename_list. For each csv file, the first
+# (num_output_dims * num_input_steps) columns are the past (E.g., if num_output_dims=2, then
+# they are arranged as (x_{t-num_input_steps}, y_{t-num_input_steps}, ... x_{t-1}, y_{t-1}) ).
+# The next num_output_dims columns are the target prediction for the future.
+# If is_classified = True, the last column in the csv should provide the true_domain id for evaluating 
+# whether the domain prediction is correct (not used for training)
+########################################
+csv_dirname = "../datasets/GROURND_TRUTH/"  # Path for the dataset file
+is_classified = True             # If True, the last column in the csv file should provide the true_domain id for evaluation.
+csv_filename_list = get_mystery(50000, range(4,7), range(1, 6), is_classified) + get_mystery(50000, [20], range(1, 6), is_classified) + get_mystery(50000, range(7, 11), range(1, 6), is_classified)
+print("Environments:\n", csv_filename_list)
+num_output_dims = 2               # It sets the dimension of output
+num_input_steps = 2               # It sets the number of steps for the input
 
-is_Lagrangian = False       # If True, learn the Lagrangian. If False, learn Equation of Motion (EOM)
-loss_balance_model_influence = False
-loss_success_threshold = 1e-4   # MSE level you regard as success
-theory_add_mse_threshold = 0.05 # MSE level below which you will add to the theory hub
-theory_remove_fraction_threshold = 0.005  # Fraction threshold below which you will remove a theory after each stage of training.
-load_previous = True        # Whether to load previously trained instances on
-max_trial_times = 1         # Maximum number of trial times before going on to next target (DEFAULT=1)
-is_simplify_model = True    # Whether to perform simplification of theory models
-is_simplify_domain = False  # Whether to perform simplification of theory domains
-record_mode = 2             # Record data mode. Choose from 0 (minimal recording), 1, 2 (record everything)
+########################################
+# Other important settings:
+########################################
+exp_mode = "continuous"           # Choose from "continuous" (full AI Physicist), "newb" (newborn) and "base" (baseline)
+forward_steps = 1                 # Number of forward steps to predict
+data_format = "states"            # Choose from "states" or "images"
+pred_nets_activation = "linear"   # Activation for the prediction function f. Choose from "linear", "leakyRelu"
+num_layers = 3                    # Number of layers for the prediction function f.
 
-csv_filename_list = get_mystery(50000, range(4,7), range(1, 6)) + get_mystery(50000, [20], range(1, 6)) + get_mystery(50000, range(7, 11), range(1, 6))
+num_theories_init = 4             # Number of theories to start with.
+add_theory_loss_threshold = 2e-6  # MSE threshold for individual data points above which to add a new theory to fit.
+add_theory_criteria = ("loss_with_domain", 0)  # Criteria and threshold of loss increase to determine whether to accept adding the theory.
+add_theory_quota = 1              # maximum number of theories to add at each phase.
+add_theory_limit = None           # maximum allowed number of theories. If None, do not set limit.
+
+is_Lagrangian = False             # If True, learn the Lagrangian. If False, learn Equation of Motion (EOM).
 
 
 # ## Settings:
@@ -88,13 +88,16 @@ csv_filename_list = get_mystery(50000, range(4,7), range(1, 6)) + get_mystery(50
 # In[3]:
 
 
+# Other settings:
 exp_id = "exp1.0"
-env_names = "file"
-# env_names = "envs-piece"
+env_source = "file"
 pred_nets_neurons = 8
 domain_net_neurons = 8
 domain_pred_mode = "onehot"
 mse_amp = 1e-7
+scheduler_settings = ("ReduceLROnPlateau", 40, 0.1)   # Settings for the learning rate scheduler
+# scheduler_settings = ("LambdaLR", "exp", 2, False)    # Settings for the learning rate scheduler
+simplify_criteria = ("DLs", 0, 3, "relative") # The (criteria type, threshold, patience, compare_mode) upon which not satisfied, we break the current simplification and continue to the next layer/model
 optim_type = ("adam", 5e-3)
 optim_domain_type = ("adam", 1e-3)
 optim_autoencoder_type = ("adam", 1e-5, 1e-1) # optim_type, lr, loss_scale
@@ -111,10 +114,24 @@ is_mse_decay = False
 num_examples = 20000
 epochs = 10000
 iter_to_saturation = int(epochs / 2)
+MDL_mode = "both"
 date_time = "{0}-{1}".format(datetime.datetime.now().month, datetime.datetime.now().day)
 seed = 0
-array_id = "Lag"
-simplify_criteria = ("DLs", 0, 3, "relative") # The (criteria type, threshold, patience, compare_mode) upon which not satisfied, we break the current simplification and continue to the next layer/model
+array_id = "0"
+
+loss_balance_model_influence = False
+loss_success_threshold = 1e-4   # MSE level you regard as success
+theory_add_mse_threshold = 0.05 # MSE level below which you will add to the theory hub
+theory_remove_fraction_threshold = 0.005  # Fraction threshold below which you will remove a theory after each stage of training.
+matching_numerical_tolerance = 2e-4 # The tolerance below which you regard the numerical coefficient matches.
+matching_snapped_tolerance = 1e-9   # The tolerance below which you regard the snapped coefficient matches.
+load_previous = True        # Whether to load previously trained instances on
+max_trial_times = 1         # Maximum number of trial times before going on to next target (DEFAULT=1)
+is_simplify_model = True    # Whether to perform simplification of theory models
+is_simplify_domain = False  # Whether to perform simplification of theory domains
+record_mode = 2             # Record data mode. Choose from 0 (minimal recording), 1, 2 (record everything)
+show_3D_plot = False
+show_vs = False
 
 big_domain_dict = [(key, [1, 2]) for key in get_mystery([20000, 30000, 40000, 50000], range(4, 7), range(11))] +                   [(key, [1, 2]) for key in get_mystery([40000, 50000], [20], range(11))] +                   [(key, [1, 2, 3]) for key in get_mystery([20000, 30000, 40000, 50000], range(7, 10), range(11))] +                   [(key, [1, 2, 3, 4]) for key in get_mystery([20000, 30000, 40000, 50000], [10], range(11))]
 big_domain_dict = {key: item for key, item in big_domain_dict}
@@ -129,7 +146,6 @@ if is_pendulum:
     reg_domain_amp = 1e-7
     show_3D_plot = False
     pred_nets_activation = "tanh"
-#     csv_filename_list = ['mysteryt_px_50', 'mysteryt_px_51', 'mysteryt_px_52', 'mysteryt_px_53', 'mysteryt_px_60', 'mysteryt_px_61', 'mysteryt_px_62', 'mysteryt_px_70', 'mysteryt_px_71', 'mysteryt_px_72']
     csv_filename_list = ['mysteryt_px_10', 'mysteryt_px_11', 'mysteryt_px_12', 'mysteryt_px_13', 'mysteryt_px_20', 'mysteryt_px_21', 'mysteryt_px_23']
     is_simplify_model = False
     is_simplify_domain = False
@@ -140,7 +156,6 @@ if is_pendulum:
     record_mode = 1
 #     reg_smooth = (0.1, 2, 10, 1e-2, 1)
     if is_xv:
-#         csv_filename_list = ['mysteryt_pxv_50', 'mysteryt_pxv_51', 'mysteryt_pxv_52', 'mysteryt_pxv_53', 'mysteryt_pxv_60', 'mysteryt_pxv_61', 'mysteryt_pxv_62', 'mysteryt_pxv_70', 'mysteryt_pxv_71', 'mysteryt_pxv_72']
         csv_filename_list = ['mysteryt_pxv_10', 'mysteryt_pxv_11', 'mysteryt_pxv_12', 'mysteryt_pxv_13', 'mysteryt_pxv_20', 'mysteryt_pxv_21', 'mysteryt_pxv_23']
         num_output_dims = 4
         num_input_steps = 1
@@ -168,7 +183,7 @@ if is_Lagrangian:
 ########################################
 
 exp_id = get_args(exp_id, 1)
-env_names = get_args(env_names, 2)
+env_source = get_args(env_source, 2)
 exp_mode = get_args(exp_mode, 3)
 num_theories_init = get_args(num_theories_init, 4, "int")
 pred_nets_neurons = get_args(pred_nets_neurons, 5, "int")
@@ -198,9 +213,9 @@ seed = get_args(seed, 29, "int")
 array_id = get_args(array_id, 30, "int")
 is_batch = False
 array_id_core = array_id
-if isinstance(env_names, str) and "mystery" in env_names:
-    csv_filename_list = [env_names]
-    env_names = "file"
+if isinstance(env_source, str) and "mystery" in env_source:
+    csv_filename_list = [env_source]
+    env_source = "file"
     array_id = seed
     load_previous = False
     is_batch = True
@@ -226,15 +241,9 @@ batch_size = min(batch_size, num_examples)
 save_image = True
 render = False
 loss_floor = 1e-12
-csv_dirname = "../datasets/"
 simplify_lr = 1e-6
 simplify_epochs = 40000
 simplify_patience = 200
-# ramping_L1_list = np.logspace(-7, 0, 40) # The list of L1 amplitudes you will ramp up in the "ramping-L1" simplification
-# ramping_mse_threshold = 1e-3    # The MSE threshold above which you stop the ramping
-# ramping_final_multiplier = 0.01 # The multiplier you apply on the final L1 amplitude you will use (PERHAPS USE 1e-2 INSTEAD)
-# reg_scale_factor_dict = {key: [1, 0.1, 0.01, 0.001] for key in csv_filename_list}
-# target_symbolic_expressions = extract_target_expression("spreadsheet.csv", csv_dirname = csv_dirname)
 target_symbolic_expressions = {}
 view_init = (10, 190)           # Angle you want to view the 3D plots
 
@@ -258,7 +267,7 @@ torch.manual_seed(seed)
 
 dirname = theory_PATH + "/{0}_{1}/".format(exp_id, date_time)
 filename = dirname + "{0}_{1}_num_{2}_pred_{3}_{4}_dom_{5}_{6}_mse_{7}_sim_{8}_optim_{10}_{11}_reg_{12}_{13}_batch_{14}_core_{15}_order_{16}_lossd_{17}_{18}_infl_{19}_#_{20}_mul_{21}_MDL_{22}_{23}D_{24}L_id_{25}_{26}.p".format(
-            env_names, exp_mode, num_theories_init, pred_nets_neurons, pred_nets_activation, domain_net_neurons, domain_pred_mode, mse_amp,
+            env_source, exp_mode, num_theories_init, pred_nets_neurons, pred_nets_activation, domain_net_neurons, domain_pred_mode, mse_amp,
             to_string(simplify_criteria), to_string(scheduler_settings, num_strings = 5), to_string(optim_type), to_string(optim_domain_type), reg_amp, reg_domain_amp, batch_size, loss_core, 
             loss_order, loss_decay_scale, is_mse_decay, loss_balance_model_influence, num_examples, iter_to_saturation, MDL_mode, num_output_dims, num_layers, seed, array_id,
 )
@@ -284,7 +293,7 @@ if load_augmenting_hub:
     is_propose_models = True
     dirname_augmenting_hub = theory_PATH + "/{0}_{1}/".format("transfer-hit5.5", "10-9")
     hub_candi1 = "{0}_{1}_num_{2}_pred_{3}_{4}_dom_{5}_{6}_mse_{7}_sim_{8}_optim_{10}_{11}_reg_{12}_{13}".format(
-                env_names, "continuous", num_theories_init, pred_nets_neurons, pred_nets_activation, domain_net_neurons, domain_pred_mode, mse_amp,
+                env_source, "continuous", num_theories_init, pred_nets_neurons, pred_nets_activation, domain_net_neurons, domain_pred_mode, mse_amp,
                 to_string(simplify_criteria), to_string(scheduler_settings, num_strings = 5), to_string(optim_type), to_string(optim_domain_type), reg_amp, reg_domain_amp, 
                 
     )
@@ -359,14 +368,6 @@ if load_previous:
 for env_name in csv_filename_list:
     big_domain_ids = big_domain_dict[env_name] if env_name in big_domain_dict else None 
     # Dealing with specific environments:
-    if "mystery" in env_name and num_output_dims == 2:
-        env_name = "2D" + env_name
-    if "mystery" in env_name and num_output_dims == 4:
-        env_name = "4D" + env_name
-    if "N" in env_name.split("_"): # Lorenz
-        env_name_split = env_name.split("_")
-        num_output_dims = int(env_name_split[env_name_split.index("N") + 1])
-        pred_nets_activation = "sigmoid"
     print("\n" + "=" * 150 + "\nnew environment\n" + "{0}\n".format(env_name) + "=" * 150 + "\n\n")
     
     # Check if the environment has been run. If so, skip:
@@ -390,11 +391,15 @@ for env_name in csv_filename_list:
     torch.manual_seed(seed)
     
     # Get dataset from file:
-    dataset = get_dataset_from_file(env_name, num_output_dims = num_output_dims, num_input_steps = num_input_steps, csv_dirname = csv_dirname + "GROUND_TRUTH/", 
-                                    forward_steps = forward_steps, num_examples = num_examples,
-                                    is_Lagrangian = is_Lagrangian,
-                                    is_cuda = is_cuda,
-                                   )
+    dataset = get_dataset(filename=csv_dirname + env_name + ".csv",
+                          num_output_dims=num_output_dims,
+                          is_classified=is_classified,
+                          num_input_steps=num_input_steps,
+                          forward_steps=forward_steps, 
+                          num_examples=num_examples,
+                          is_Lagrangian=is_Lagrangian,
+                          is_cuda=is_cuda,
+                         )
     if is_Lagrangian:
         num_output_dims = 4
         num_input_steps = 2
@@ -420,13 +425,6 @@ for env_name in csv_filename_list:
         [domain_net_neurons, "Simple_Layer", {}],
         [num_theories_init, "Simple_Layer", {"activation": "linear"}],
     ]
-#     if is_pendulum:
-#         struct_param_domain = [
-#             [domain_net_neurons, "Simple_Layer", {}],
-#             [domain_net_neurons, "Simple_Layer", {}],
-#             [domain_net_neurons, "Simple_Layer", {}],
-#             [num_theories_init, "Simple_Layer", {"activation": "linear"}],
-#         ]
     settings_domain = {"activation": "leakyRelu"} # Default activation if not stipulated
     loss_types = {
                     "pred-based_generalized-mean_{0}".format(loss_order): {"amp": 1., "decay_on": True},
@@ -704,19 +702,6 @@ for env_name in csv_filename_list:
             loss_record = T.pred_nets.simplify(X_train, y_train, valid_onehot, "local", loss_type = "DLs", loss_precision_floor = T.loss_precision_floor, simplify_criteria = simplify_criteria, validation_data = validation_pred_nets, patience = simplify_patience, lr = simplify_lr, epochs = simplify_epochs, is_Lagrangian = is_Lagrangian, verbose = 2)
             record_data(info_dict_single["data_record_simplification-model"], [T.get_losses(X_test, y_test, **kwargs), loss_record, T.pred_nets.model_dict, "after_local_snapping"], ["all_losses_dict", "loss_record", "pred_nets_model_dict", "event"])
 
-#             # Ramping L1:
-#             loss_record = T.pred_nets.simplify(X_train, y_train, valid_onehot, "ramping-L1", 
-#                                                reg_scale_factor = reg_scale_factor_dict[env_name], 
-#                                                ramping_L1_list = ramping_L1_list,
-#                                                ramping_mse_threshold = ramping_mse_threshold,
-#                                                ramping_final_multiplier = ramping_final_multiplier,
-#                                                validation_data = validation_pred_nets,
-#                                                is_Lagrangian = is_Lagrangian,
-#                                                isplot = isplot,
-#                                               )
-#             T.pred_nets.get_weights_bias(W_source = "core", b_source = "core", verbose = True)
-#             record_data(info_dict_single["data_record_simplification-model"], [T.get_losses(X_test, y_test, **kwargs), loss_record, T.pred_nets.model_dict, "after_ramping-L1"], ["all_losses_dict", "loss_record", "pred_nets_model_dict", "event"])
-
             # Integer snapping:
             loss_record = T.pred_nets.simplify(X_train, y_train, valid_onehot, "snap", snap_mode = "integer", loss_type = "DLs", loss_precision_floor = T.loss_precision_floor, simplify_criteria = simplify_criteria, validation_data = validation_pred_nets, patience = simplify_patience, lr = simplify_lr, epochs = simplify_epochs, is_Lagrangian = is_Lagrangian, verbose = 2)
             record_data(info_dict_single["data_record_simplification-model"], [T.get_losses(X_test, y_test, **kwargs), loss_record, T.pred_nets.model_dict, "after_integer_snapping"], ["all_losses_dict", "loss_record", "pred_nets_model_dict", "event"])
@@ -813,8 +798,15 @@ for env_name in csv_filename_list:
         print("#" * 70 + "\n")
 
     # Record the last trial (either succeed or at the max_trial):
-    export_csv_with_domain_prediction(env_name = env_name, domain_net = T.domain_net, num_output_dims = num_output_dims, num_input_steps = num_input_steps, total_provided_steps = 3 if num_output_dims != 4 else 1,
-                                      csv_dirname = csv_dirname + "MYSTERIES", write_dirname = filename[:-2] + "_mys/", is_Lagrangian = is_Lagrangian, is_cuda = is_cuda)
+    export_csv_with_domain_prediction(env_name=env_name,
+                                      domain_net=T.domain_net,
+                                      num_output_dims=num_output_dims,
+                                      num_input_steps=num_input_steps,
+                                      csv_dirname=csv_dirname + "MYSTERIES",
+                                      write_dirname=filename[:-2] + "_mys/",
+                                      is_Lagrangian=is_Lagrangian,
+                                      is_cuda=is_cuda,
+                                     )
     info_dict[env_name]["pred_nets"] = pred_nets.model_dict
     info_dict[env_name]["domain_net"] = domain_net.model_dict
     if hasattr(T, "autoencoder"):
