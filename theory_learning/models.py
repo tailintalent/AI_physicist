@@ -7,6 +7,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.autograd import grad
 import sys, os
 sys.path.append(os.path.join(os.path.dirname("__file__"), '..', '..'))
 from AI_physicist.pytorch_net.net import MLP

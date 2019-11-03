@@ -821,7 +821,7 @@ def prepare_data_from_file(filename, time_steps = 3, output_dims = 0, is_flatten
 def transform_data_to_phase_space(matrix, dt = Dt):
     """qx1, qdotx1, qy1, qdoty1, qx2, qdotx2, qy2, qdoty2"""
     assert len(matrix.shape) == 2
-    assert matrix.shape[-1] == 8 or matrix.shape[-1] == 9
+    assert matrix.shape[-1] == 8 or matrix.shape[-1] == 9, "If is_Lagrangian is True, the data dimension must be either 8 or 9."
     qdotx1 = (matrix[:,4] - matrix[:, 2]) / dt
     qdotx2 = (matrix[:,6] - matrix[:, 4]) / dt
     qdoty1 = (matrix[:,5] - matrix[:, 3]) / dt

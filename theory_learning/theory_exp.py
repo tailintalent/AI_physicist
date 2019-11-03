@@ -44,9 +44,9 @@ is_cuda = torch.cuda.is_available()
 standardize = standardize_symbolic_expression
 
 
-# ## Loading data from file:
+# ## Dataset loading and important settings:
 
-# In[2]:
+# In[ ]:
 
 
 ########################################
@@ -58,7 +58,7 @@ standardize = standardize_symbolic_expression
 # If is_classified = True, the last column in the csv should provide the true_domain id for evaluating 
 # whether the domain prediction is correct (not used for training)
 ########################################
-csv_dirname = "../datasets/GROURND_TRUTH/"  # Path for the dataset file
+csv_dirname = "../datasets/GROUND_TRUTH/"  # Path for the dataset file
 is_classified = True             # If True, the last column in the csv file should provide the true_domain id for evaluation.
 csv_filename_list = get_mystery(50000, range(4,7), range(1, 6), is_classified) + get_mystery(50000, [20], range(1, 6), is_classified) + get_mystery(50000, range(7, 11), range(1, 6), is_classified)
 print("Environments:\n", csv_filename_list)
@@ -81,9 +81,10 @@ add_theory_quota = 1              # maximum number of theories to add at each ph
 add_theory_limit = None           # maximum allowed number of theories. If None, do not set limit.
 
 is_Lagrangian = False             # If True, learn the Lagrangian. If False, learn Equation of Motion (EOM).
+load_previous = True              # Whether to load previously trained instances on
 
 
-# ## Settings:
+# ## Settings up:
 
 # In[3]:
 
@@ -125,7 +126,6 @@ theory_add_mse_threshold = 0.05 # MSE level below which you will add to the theo
 theory_remove_fraction_threshold = 0.005  # Fraction threshold below which you will remove a theory after each stage of training.
 matching_numerical_tolerance = 2e-4 # The tolerance below which you regard the numerical coefficient matches.
 matching_snapped_tolerance = 1e-9   # The tolerance below which you regard the snapped coefficient matches.
-load_previous = True        # Whether to load previously trained instances on
 max_trial_times = 1         # Maximum number of trial times before going on to next target (DEFAULT=1)
 is_simplify_model = True    # Whether to perform simplification of theory models
 is_simplify_domain = False  # Whether to perform simplification of theory domains
@@ -350,6 +350,8 @@ def load_info_dict(info_dict, filename, trial_times = 1):
             time.sleep(2 ** i * (0.8 + 0.4 * np.random.rand()))
     return info_dict, load_succeed
 
+
+# ## Theory learning and simplification:
 
 # In[ ]:
 
