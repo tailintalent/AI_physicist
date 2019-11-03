@@ -19,7 +19,7 @@ The PyTorch requirement is >=0.4.1. Other requirements are in [requirements.txt]
 The datasets used for the paper is provided in [here](https://space.mit.edu/home/tegmark/aiphysicist.html). Put the unzipped "MYSTERIES", "GROUND_TRUTH" and "filenames.csv" directly under datasets/.
 
 ## Usage
-The main experiment file is [theory_learning/theory_exp.ipynb](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_exp.ipynb) (or the .py counterpart for terminal), which contains the DDAC, simplification and lifelong learning algorithms for the AI Physicist.
+The main experiment file is [theory_learning/theory_exp.ipynb](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_exp.ipynb) (or the [theory_exp.py](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_exp.py) counterpart for terminal. Both of which can be directly run), which contains the DDAC, simplification and lifelong learning algorithms for the AI Physicist.
 
 Before running the experiment, first set up the path and correct settings for the datasets in line 61-83 of [theory_exp.py](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_exp.py) (or the corresponding [theory_exp.ipynb](https://github.com/tailintalent/AI_physicist/blob/master/theory_learning/theory_exp.ipynb) file). Particularly, important settings are:
 - csv_dirname: path to the dataset file
