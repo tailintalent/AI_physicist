@@ -27,6 +27,7 @@ x3, y3, x4, y4, x5, y5, domain_id3
 
 ...
 
+where the first 2 * 2 = 4 columns will be used as X, the next 2 columns will be used as Y, and the last column provides the true domain ID for evaluating domain prediction (not used in training).
 
 If using files in "GROUND_TRUTH" (where true domain ids are provided as evaluation), set csv_dirname = "../datasets/GROUND_TRUTH/" and is_classified = True; If using files in "MYSTERIES", set csv_dirname = "../datasets/MYSTERIES/" and is_classified = False;
 
