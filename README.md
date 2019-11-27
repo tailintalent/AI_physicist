@@ -9,10 +9,11 @@
 More details are provided in the paper "Toward an AI Physicist for unsupervised learning", Tailin Wu and Max Tegmark (2019) \[[*Physical Review E*](https://journals.aps.org/pre/abstract/10.1103/PhysRevE.100.033311)\]\[[arXiv](https://arxiv.org/abs/1810.10525)\]. It is under active development and more functionalities are continuously added to the agent.
 
 ## Installation
-First clone the directory. Since the model construction and training of this repository utilize [pytorch_net](https://github.com/tailintalent/pytorch_net) as a submodule, then run the following command:
+First clone the directory. Then run 
 ```
-git submodule init; git submodule update
+bash setup.sh
 ```
+to initialize the submodule and download the datasets.
 
 The PyTorch requirement is >=0.4.1. Other requirements are in [requirements.txt](https://github.com/tailintalent/AI_physicist/blob/master/requirements.txt)
 
